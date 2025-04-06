@@ -1,18 +1,17 @@
-import tkinter as tk                          # Importation de la bibliothèque tkinter pour l'interface graphique
-from tkinter import ttk, messagebox           # Importation de ttk pour les widgets thématiques et messagebox pour les boîtes de dialogue
-import os                                     # Module pour interagir avec le système de fichiers
-import datetime                               # Module pour gérer les dates et heures
-import platform                               # Module pour identifier le système d'exploitation
+import tkinter as tk
+from tkinter import ttk, messagebox
+import os
+import datetime
+import platform 
 
-# Définition de la classe FileExplorer qui hérite de tk.Tk pour créer la fenêtre principale
 class FileExplorer(tk.Tk):
     def __init__(self):
-        super().__init__()                    # Initialisation de la classe parente tk.Tk
-        self.title("Explorateur de fichiers")  # Titre de la fenêtre
-        self.geometry("1000x600")              # Taille de la fenêtre
-        self.file_data = {}                    # Dictionnaire pour stocker les informations sur les fichiers affichés
+        super().__init__()
+        self.title("Explorateur de fichiers")
+        self.geometry("1000x600")
+        self.file_data = {} # Dictionnaire pour stocker les informations sur les fichiers affichés
 
-        # Création du panneau principal qui va contenir deux sections (arborescence et détails)
+        # Panneau principal
         self.paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self.paned.pack(fill=tk.BOTH, expand=True)
         
@@ -417,7 +416,6 @@ class FileExplorer(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Erreur", f"Impossible de supprimer : {e}")
 
-# Point d'entrée du programme : création et lancement de l'application
 if __name__ == "__main__":
     app = FileExplorer()
-    app.mainloop()  # Démarrage de la boucle principale de l'interface graphique
+    app.mainloop()
