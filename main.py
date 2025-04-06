@@ -11,31 +11,18 @@ class FileExplorer(tk.Tk):
         self.geometry("1000x600")
         self.file_data = {}
 
-        # Configuration du thème moderne
-        self.style = ttk.Style(self)
-        self.style.theme_use('clam')
-        self.style.configure('Treeview', 
-                             background="#2b2b2b", 
-                             foreground="white", 
-                             fieldbackground="#2b2b2b",
-                             font=('Helvetica', 10))
-        self.style.map('Treeview', background=[('selected', '#347083')])
-        self.style.configure('TButton', font=('Helvetica', 10), padding=5)
-        self.style.configure('TEntry', font=('Helvetica', 10))
-        self.style.configure('TLabel', font=('Helvetica', 10), foreground="#333")
-
         # Panneau principal
-        self.paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self.paned.pack(fill=tk.BOTH, expand=True)
+        self.panneau = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        self.panneau.pack(fill=tk.BOTH, expand=True)
         
         # Arborescence des dossiers (à gauche)
-        self.tree_frame = ttk.Frame(self.paned, width=300)
-        self.tree = ttk.Treeview(self.tree_frame, show='tree')
-        self.tree.pack(fill=tk.BOTH, expand=True)
-        self.populate_root()
+        self.frame = ttk.Frame(self.panneau, width=300)
+        self.arborescence = ttk.Treeview(self.frame, show='tree')
+        self.arborescence.pack(fill=tk.BOTH, expand=True)
+        self.remplir_racine()
         
         # Panneau de droite (liste des fichiers et détails)
-        self.right_frame = ttk.Frame(self.paned)
+        self.right_frame = ttk.Frame(self.panneau)
 
         # Barre d'outils : bouton retour, saisie de chemin, case pour fichiers cachés
         self.toolbar = ttk.Frame(self.right_frame)
@@ -97,8 +84,8 @@ class FileExplorer(tk.Tk):
             value_label.grid(row=i, column=1, sticky='w', padx=2, pady=2)
             self.details_labels[key] = value_label
         
-        self.paned.add(self.tree_frame, weight=1)
-        self.paned.add(self.right_frame, weight=3)
+        self.panneau.add(self.frame, weight=1)
+        self.panneau.add(self.right_frame, weight=3)
         
         # Chemin de départ
         self.current_path = os.path.expanduser('~')
@@ -106,20 +93,20 @@ class FileExplorer(tk.Tk):
         self.update_file_list()
         
         # Événements pour l'arborescence
-        self.tree.bind('<<TreeviewOpen>>', self.on_tree_open)
-        self.tree.bind('<<TreeviewSelect>>', self.on_tree_select)
+        self.arborescence.bind('<<TreeviewOpen>>', self.on_tree_open)
+        self.arborescence.bind('<<TreeviewSelect>>', self.on_tree_select)
 
-    def populate_root(self):
+    def remplir_racine(self):
         if platform.system() == 'Windows':
-            for drive in self.get_windows_drives():
-                node = self.tree.insert('', 'end', text=drive, values=[drive], tags=('directory',))
-                self.tree.insert(node, 'end', text='dummy')
+            for drive in self.obtenir_disque():
+                node = self.arborescence.insert('', 'end', text=drive, values=[drive], tags=('directory',))
+                self.arborescence.insert(node, 'end', text='dummy')
         else:
             root = '/'
-            node = self.tree.insert('', 'end', text=root, values=[root], tags=('directory',))
-            self.tree.insert(node, 'end', text='dummy')
+            node = self.arborescence.insert('', 'end', text=root, values=[root], tags=('directory',))
+            self.arborescence.insert(node, 'end', text='dummy')
 
-    def get_windows_drives(self):
+    def obtenir_disque(self):
         drives = []
         for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
             drive = f'{letter}:\\'
@@ -128,11 +115,11 @@ class FileExplorer(tk.Tk):
         return drives
 
     def on_tree_open(self, event):
-        node = self.tree.focus()
-        children = self.tree.get_children(node)
-        if children and self.tree.item(children[0], 'text') == 'dummy':
-            self.tree.delete(children[0])
-            path = self.tree.item(node, 'values')[0]
+        node = self.arborescence.focus()
+        children = self.arborescence.get_children(node)
+        if children and self.arborescence.item(children[0], 'text') == 'dummy':
+            self.arborescence.delete(children[0])
+            path = self.arborescence.item(node, 'values')[0]
             self.populate_tree_node(node, path)
 
     def populate_tree_node(self, node, path):
@@ -143,14 +130,14 @@ class FileExplorer(tk.Tk):
                     continue
                 full_path = os.path.join(path, entry)
                 if os.path.isdir(full_path):
-                    child = self.tree.insert(node, 'end', text=entry, values=[full_path], tags=('directory',))
-                    self.tree.insert(child, 'end', text='dummy')
+                    child = self.arborescence.insert(node, 'end', text=entry, values=[full_path], tags=('directory',))
+                    self.arborescence.insert(child, 'end', text='dummy')
         except PermissionError:
             pass
 
     def on_tree_select(self, event):
-        node = self.tree.focus()
-        path = self.tree.item(node, 'values')[0]
+        node = self.arborescence.focus()
+        path = self.arborescence.item(node, 'values')[0]
         self.current_path = path
         self.update_path_entry()
         self.update_file_list()
@@ -381,6 +368,5 @@ class FileExplorer(tk.Tk):
         # Personnalisez l'action d'ouverture du fichier ici
         messagebox.showinfo("Ouvrir", f"Ouverture du fichier : {path}")
 
-if __name__ == "__main__":
-    app = FileExplorer()
-    app.mainloop()
+app = FileExplorer()
+app.mainloop()
