@@ -31,13 +31,13 @@ class FileExplorer(tk.Tk):
         self.toolbar.pack(fill=tk.X, padx=5, pady=5)
         
         # Bouton "Retour" pour revenir au dossier parent
-        self.back_button = ttk.Button(self.toolbar, text="Retour", command=self.go_back)
+        self.back_button = ttk.Button(self.toolbar, text="Retour", command=self.retour)
         self.back_button.pack(side=tk.LEFT, padx=(0, 5))
         
         # Champ de saisie pour entrer un chemin directement
         self.path_entry = ttk.Entry(self.toolbar)
         self.path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.path_entry.bind('<Return>', self.navigate_to_path)  # Navigation vers le chemin saisi lors de l'appui sur "Entrée"
+        self.path_entry.bind('<Return>', self.naviguer_chemin)  # Navigation vers le chemin saisi lors de l'appui sur "Entrée"
         
         # Variable pour la case à cocher qui détermine l'affichage des fichiers cachés
         self.show_hidden = tk.BooleanVar(value=False)
@@ -52,10 +52,10 @@ class FileExplorer(tk.Tk):
                                       columns=('size', 'type', 'modified'), 
                                       selectmode='browse')
         # Définition des en-têtes de colonnes et association à une fonction de tri pour chacune d'elles
-        self.file_list.heading('#0', text='Nom', command=lambda: self.sort_column('name', False))
-        self.file_list.heading('size', text='Taille', command=lambda: self.sort_column('size', False))
-        self.file_list.heading('type', text='Type', command=lambda: self.sort_column('type', False))
-        self.file_list.heading('modified', text='Modifié', command=lambda: self.sort_column('modified', False))
+        self.file_list.heading('#0', text='Nom', command=lambda: self.trier_colonne('name', False))
+        self.file_list.heading('size', text='Taille', command=lambda: self.trier_colonne('size', False))
+        self.file_list.heading('type', text='Type', command=lambda: self.trier_colonne('type', False))
+        self.file_list.heading('modified', text='Modifié', command=lambda: self.trier_colonne('modified', False))
         # Configuration de la largeur de chaque colonne
         self.file_list.column('#0', width=250)
         self.file_list.column('size', width=100)
@@ -63,16 +63,16 @@ class FileExplorer(tk.Tk):
         self.file_list.column('modified', width=150)
         self.file_list.pack(fill=tk.BOTH, expand=True)
         # Association d'événements sur la liste des fichiers
-        self.file_list.bind('<Double-1>', self.on_file_double_click)    # Ouvrir ou naviguer lors d'un double clic
-        self.file_list.bind('<<TreeviewSelect>>', self.on_file_select)    # Mettre à jour le panneau de détails lors de la sélection
-        self.file_list.bind('<Button-3>', self.show_context_menu)         # Afficher le menu contextuel sur clic droit
+        self.file_list.bind('<Double-1>', self.double_clic_sur_fichier)    # Ouvrir ou naviguer lors d'un double clic
+        self.file_list.bind('<<TreeviewSelect>>', self.selection_fichier)    # Mettre à jour le panneau de détails lors de la sélection
+        self.file_list.bind('<Button-3>', self.afficher_menu_clic_droit)         # Afficher le menu contextuel sur clic droit
         
         # Création du menu contextuel avec plusieurs actions (renommer, déplacer, créer, supprimer)
         self.context_menu = tk.Menu(self, tearoff=0)
-        self.context_menu.add_command(label="Renommer", command=self.inline_rename)
-        self.context_menu.add_command(label="Déplacer", command=self.inline_move)
-        self.context_menu.add_command(label="Créer un nouveau fichier", command=self.inline_create_file)
-        self.context_menu.add_command(label="Supprimer", command=self.delete_selected_file)
+        self.context_menu.add_command(label="Renommer", command=self.renommer_fichier)
+        self.context_menu.add_command(label="Déplacer", command=self.deplacer_fichier)
+        self.context_menu.add_command(label="Créer un nouveau fichier", command=self.creer_fichier)
+        self.context_menu.add_command(label="Supprimer", command=self.supprimer_fichier)
         
         # Création du panneau de détails qui affiche des informations sur le fichier sélectionné
         self.details_frame = ttk.Frame(self.right_frame)
@@ -205,7 +205,7 @@ class FileExplorer(tk.Tk):
                 is_dir = os.path.isdir(full_path)
                 size = stat_info.st_size if not is_dir else 0  # La taille est 0 pour les dossiers
                 mtime = stat_info.st_mtime
-                size_str = self.format_size(size)           # Formate la taille pour l'affichage
+                size_str = self.formater_taille(size)           # Formate la taille pour l'affichage
                 # Formatage de la date de modification
                 mtime_str = datetime.datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M:%S')
                 type_str = 'Dossier' if is_dir else f"{os.path.splitext(entry)[1]} Fichier"
@@ -223,8 +223,8 @@ class FileExplorer(tk.Tk):
                 }
 
     # Méthode pour formater la taille d'un fichier en octets, Ko, Mo, etc.
-    def format_size(self, size):
-        units = ['B', 'KB', 'MB', 'GB', 'TB']
+    def formater_taille(self, size):
+        units = ['O', 'KB', 'MB', 'GB', 'TB']
         index = 0
         # Boucle pour déterminer l'unité appropriée
         while size >= 1024 and index < len(units)-1:
@@ -233,7 +233,7 @@ class FileExplorer(tk.Tk):
         return f"{size:.2f} {units[index]}" if index > 0 else f"{size} B"
 
     # Méthode appelée lors d'un double clic sur un fichier/dossier dans la liste
-    def on_file_double_click(self, event):
+    def double_clic_sur_fichier(self, event):
         item = self.file_list.selection()
         if not item:
             return
@@ -247,7 +247,7 @@ class FileExplorer(tk.Tk):
             self.update_liste_fichier()
 
     # Méthode pour trier les colonnes de la liste
-    def sort_column(self, col, reverse):
+    def trier_colonne(self, col, reverse):
         # Récupération de tous les items avec leur texte
         items = [(self.file_list.item(item, 'text'), item) for item in self.file_list.get_children('')]
         if col == 'name':
@@ -260,23 +260,23 @@ class FileExplorer(tk.Tk):
         for index, (text, item) in enumerate(items):
             self.file_list.move(item, '', index)
         # Mise à jour de la commande de l'en-tête pour inverser l'ordre au prochain clic
-        self.file_list.heading(col, command=lambda: self.sort_column(col, not reverse))
+        self.file_list.heading(col, command=lambda: self.trier_colonne(col, not reverse))
 
     # Méthode appelée lors de la sélection d'un fichier dans la liste pour afficher ses détails
-    def on_file_select(self, event):
+    def selection_fichier(self, event):
         item = self.file_list.selection()
         if item:
             item = item[0]
             data = self.file_data.get(item)
             if data:
                 self.details_labels['path'].config(text=data['path'])
-                self.details_labels['size'].config(text=self.format_size(data['size']))
+                self.details_labels['size'].config(text=self.formater_taille(data['size']))
                 self.details_labels['type'].config(text=data['type'])
                 self.details_labels['created'].config(text=datetime.datetime.fromtimestamp(data['ctime']).strftime('%d/%m/%Y %H:%M:%S'))
                 self.details_labels['modified'].config(text=datetime.datetime.fromtimestamp(data['mtime']).strftime('%d/%m/%Y %H:%M:%S'))
 
     # Méthode pour naviguer vers un chemin entré dans le champ de saisie
-    def navigate_to_path(self, event):
+    def naviguer_chemin(self, event):
         path = self.path_entry.get()
         if os.path.exists(path):
             self.current_path = path
@@ -285,7 +285,7 @@ class FileExplorer(tk.Tk):
             messagebox.showerror("Erreur", "Chemin introuvable")  # Affiche un message d'erreur si le chemin n'existe pas
 
     # Méthode pour revenir au dossier parent du chemin courant
-    def go_back(self):
+    def retour(self):
         parent = os.path.dirname(self.current_path)
         if parent and os.path.exists(parent) and parent != self.current_path:
             self.current_path = parent
@@ -293,14 +293,14 @@ class FileExplorer(tk.Tk):
             self.update_liste_fichier()
 
     # Méthode pour afficher le menu contextuel (clic droit) sur un élément de la liste
-    def show_context_menu(self, event):
+    def afficher_menu_clic_droit(self, event):
         item = self.file_list.identify_row(event.y)
         if item:
             self.file_list.selection_set(item)
             self.context_menu.post(event.x_root, event.y_root)
 
     # Méthode pour renommer un fichier directement dans la liste (édition inline)
-    def inline_rename(self):
+    def renommer_fichier(self):
         """Renommer directement le fichier en éditant le nom dans la liste."""
         item = self.file_list.selection()
         if not item:
@@ -333,7 +333,7 @@ class FileExplorer(tk.Tk):
         entry.bind('<FocusOut>', lambda event: entry.destroy())
 
     # Méthode pour déplacer un fichier en modifiant son chemin via le panneau de détails (édition inline)
-    def inline_move(self):
+    def deplacer_fichier(self):
         """Déplacer directement le fichier en modifiant son chemin dans le panneau de détails."""
         item = self.file_list.selection()
         if not item:
@@ -367,7 +367,7 @@ class FileExplorer(tk.Tk):
         entry.bind('<FocusOut>', lambda event: entry.destroy())
 
     # Méthode pour créer un nouveau fichier en éditant directement son nom
-    def inline_create_file(self):
+    def creer_fichier(self):
         """Créer un nouveau fichier directement en éditant son nom."""
         # Positionne l'éditeur en haut de la liste (ou en haut à gauche si la liste est vide)
         children = self.file_list.get_children()
@@ -398,7 +398,7 @@ class FileExplorer(tk.Tk):
         editor.bind('<FocusOut>', lambda event: editor.destroy())
 
     # Méthode pour supprimer le fichier ou dossier sélectionné
-    def delete_selected_file(self):
+    def supprimer_fichier(self):
         """Supprimer le fichier ou dossier sélectionné."""
         item = self.file_list.selection()
         if not item:
